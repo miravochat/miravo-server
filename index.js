@@ -1,9 +1,9 @@
 const express = require('express');
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccount.json');
 
-const { credential } = require("firebase-admin");
-admin.initializeApp({ credential: credential.cert(serviceAccount) });
+const serviceAccount = JSON.parse(Buffer.from(process.env.SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
 const app = express();
 app.use(express.json());
@@ -12,7 +12,6 @@ app.get('/', (req, res) => res.json({ status: 'Miravo Server Running' }));
 
 app.post('/send-notification', async (req, res) => {
   const { token, title, body, data } = req.body;
-  if (!token) return res.status(400).json({ error: 'token required' });
   try {
     await admin.messaging().send({
       token,
@@ -26,7 +25,6 @@ app.post('/send-notification', async (req, res) => {
 
 app.post('/send-notification-multiple', async (req, res) => {
   const { tokens, title, body, data } = req.body;
-  if (!tokens || !tokens.length) return res.status(400).json({ error: 'tokens required' });
   try {
     const msgs = tokens.map(t => ({
       token: t,
