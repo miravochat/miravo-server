@@ -37,5 +37,31 @@ app.post('/send-notification-multiple', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const uploadDir = '/tmp/videos';
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+
+const upload = multer({ storage, limits: { fileSize: 100 * 1024 * 1024 } });
+
+app.post('/upload-video', upload.single('video'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  const videoUrl = req.protocol + '://' + req.get('host') + '/video/' + req.file.filename;
+  res.json({ url: videoUrl });
+});
+
+app.get('/video/:filename', (req, res) => {
+  const filePath = path.join(uploadDir, req.params.filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
+  res.sendFile(filePath);
+});
+
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log('Miravo Server running on port ' + PORT));
